@@ -44,7 +44,7 @@ export const scenePresets: ScenePreset[] = [
   {
     id: "warhammer",
     name: "Warhammer Active Turn",
-    description: "Sharp active-player cue for demo games.",
+    description: "Sharp active-player cue for tactical scenes.",
     color: "#facc15",
     effect: "initiative",
     brightness: 74,

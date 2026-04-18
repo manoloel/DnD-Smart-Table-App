@@ -22,7 +22,7 @@ export function useTableSocket() {
   const reconnect = useAppStore((state) => state.settings.reconnect);
   const demoMode = useAppStore((state) => state.demoMode);
   const handleTableSocketMessage = useAppStore((state) => state.handleTableSocketMessage);
-  const shouldUseRealSocket = connection === "connected" || connection === "degraded";
+  const shouldUseRealSocket = connection === "connected";
 
   useEffect(() => {
     if (demoMode) {

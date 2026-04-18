@@ -44,13 +44,13 @@ export const initialPlayers: PlayerProfile[] = Array.from({ length: 6 }, (_, ind
 
 export const initialDeviceStatus: DeviceStatus = {
   connection: "offline",
-  hostname: "table.local",
+  hostname: "192.168.0.192",
   ip: "192.168.0.192",
   ssid: "Manolo_2",
   wifiStatus: "connected",
   restPort: 80,
   wsPort: 81,
-  firmware: "esp32-s3-current-api",
+  firmware: "table-controller",
   temperatureC: 38.4,
   fanSpeed: 42,
   uptimeSeconds: 3680,
@@ -58,7 +58,7 @@ export const initialDeviceStatus: DeviceStatus = {
 };
 
 export const initialSettings: AppSettings = {
-  hostname: "table.local",
+  hostname: "192.168.0.192",
   restPort: 80,
   wsPort: 81,
   reconnect: true,

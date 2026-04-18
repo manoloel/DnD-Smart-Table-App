@@ -1,11 +1,11 @@
 import { useAppStore } from "../store/useAppStore";
 import { Panel } from "../components/Panel";
-import { CapabilityBadge } from "../components/CapabilityBadge";
 import { useI18n } from "../hooks/useI18n";
 import { seatToSegmentId } from "../lib/api/segments";
 
 export function PlayersPage() {
   const players = useAppStore((state) => state.players);
+  const demoMode = useAppStore((state) => state.demoMode);
   const addManualPlayer = useAppStore((state) => state.addManualPlayer);
   const updatePlayer = useAppStore((state) => state.updatePlayer);
   const clearPlayerSeat = useAppStore((state) => state.clearPlayerSeat);
@@ -20,7 +20,7 @@ export function PlayersPage() {
         const player = players.find((item) => item.seat === seat);
 
         return (
-        <Panel key={seat} title={`${t("seat")} ${seat}`} eyebrow={player?.active ? t("activeTurn") : t("playerProfile")} badge={<CapabilityBadge mode="mock" />}>
+        <Panel key={seat} title={`${t("seat")} ${seat}`} eyebrow={player?.active ? t("activeTurn") : t("playerProfile")}>
           {!player ? (
             <div className="grid gap-4 rounded-lg border border-white/10 bg-panel-950 p-5">
               <p className="font-black text-white">{t("openSeat")}</p>
@@ -49,7 +49,7 @@ export function PlayersPage() {
                 />
               </label>
               <label className="grid min-w-0 gap-2 text-sm font-bold text-slate-300">
-                Role
+                {t("role")}
                 <input
                   value={player.role}
                   onChange={(event) => updatePlayer(player.id, { role: event.target.value })}
@@ -58,7 +58,7 @@ export function PlayersPage() {
               </label>
             </div>
 
-            <div className="grid grid-cols-[78px_78px_78px_88px_1fr_88px] gap-3 max-lg:grid-cols-2">
+            <div className="grid grid-cols-[78px_78px_78px_88px_1fr_88px] gap-3 max-lg:grid-cols-2 max-sm:grid-cols-1">
               <label className="grid min-w-0 gap-2 text-sm font-bold text-slate-300">
                 {t("seat")}
                 <select
@@ -83,7 +83,7 @@ export function PlayersPage() {
                 />
               </label>
               <label className="grid min-w-0 gap-2 text-sm font-bold text-slate-300">
-                HP
+                {t("hpShort")}
                 <input
                   type="number"
                   value={player.hp}
@@ -92,7 +92,7 @@ export function PlayersPage() {
                 />
               </label>
               <label className="grid min-w-0 gap-2 text-sm font-bold text-slate-300">
-                Init
+                {t("initiativeShort")}
                 <input
                   type="number"
                   value={player.initiative}
@@ -100,7 +100,7 @@ export function PlayersPage() {
                   className="min-w-0 rounded-lg border border-white/10 bg-panel-950 px-3 py-2 text-white"
                 />
               </label>
-              <label className="grid min-w-0 gap-2 text-sm font-bold text-slate-300 max-lg:col-span-2">
+              <label className="grid min-w-0 gap-2 text-sm font-bold text-slate-300 max-lg:col-span-2 max-sm:col-span-1">
                 {t("status")}
                 <input
                   value={player.status}
@@ -124,24 +124,28 @@ export function PlayersPage() {
               <p className="mt-2 font-mono text-sm text-signal-cyan">{player.rfidTag ?? t("noTagAssigned")}</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 max-lg:grid-cols-1">
-              <button className="rounded-lg bg-signal-cyan px-4 py-3 font-black text-panel-950" onClick={() => testHighlight(player.id)}>
-                {t("testHighlight")}
-              </button>
-              <button
-                className="rounded-lg border border-white/10 bg-white/[0.05] px-4 py-3 font-bold text-white"
-                onClick={() =>
-                  sendOled({
-                    segment: seatToSegmentId(player.seat),
-                    name: player.characterName || player.name,
-                    hp: player.hp,
-                    ac: player.armorClass,
-                    message: "",
-                  })
-                }
-              >
-                {t("sendOledTest")}
-              </button>
+            <div className={`grid gap-3 ${demoMode ? "grid-cols-3 max-lg:grid-cols-1" : "grid-cols-1"}`}>
+              {demoMode ? (
+                <>
+                  <button className="rounded-lg bg-signal-cyan px-4 py-3 font-black text-panel-950" onClick={() => testHighlight(player.id)}>
+                    {t("testHighlight")}
+                  </button>
+                  <button
+                    className="rounded-lg border border-white/10 bg-white/[0.05] px-4 py-3 font-bold text-white"
+                    onClick={() =>
+                      sendOled({
+                        segment: seatToSegmentId(player.seat),
+                        name: player.characterName || player.name,
+                        hp: player.hp,
+                        ac: player.armorClass,
+                        message: "",
+                      })
+                    }
+                  >
+                    {t("sendOledTest")}
+                  </button>
+                </>
+              ) : null}
               <button className="rounded-lg border border-signal-red/40 bg-signal-red/10 px-4 py-3 font-bold text-signal-red" onClick={() => clearPlayerSeat(player.seat)}>
                 {t("clearSeat")}
               </button>

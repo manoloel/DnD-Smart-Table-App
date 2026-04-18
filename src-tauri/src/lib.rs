@@ -1,11 +1,12 @@
 use tauri::{
+    image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Manager, WindowEvent,
 };
 use std::{
     io::{Read, Write},
-    net::TcpStream,
+    net::{TcpStream, ToSocketAddrs},
     time::Duration,
 };
 
@@ -67,12 +68,18 @@ fn table_http_request(
     path: &str,
     body: Option<&str>,
 ) -> Result<String, String> {
-    let mut stream = TcpStream::connect((hostname, port)).map_err(|error| error.to_string())?;
+    let address = (hostname, port)
+        .to_socket_addrs()
+        .map_err(|error| error.to_string())?
+        .next()
+        .ok_or_else(|| "Table address could not be resolved".to_string())?;
+    let timeout = Duration::from_secs(2);
+    let mut stream = TcpStream::connect_timeout(&address, timeout).map_err(|error| error.to_string())?;
     stream
-        .set_read_timeout(Some(Duration::from_secs(5)))
+        .set_read_timeout(Some(timeout))
         .map_err(|error| error.to_string())?;
     stream
-        .set_write_timeout(Some(Duration::from_secs(5)))
+        .set_write_timeout(Some(timeout))
         .map_err(|error| error.to_string())?;
 
     let body = body.unwrap_or("");
@@ -113,12 +120,21 @@ fn show_main_window(app: &tauri::AppHandle) {
     }
 }
 
+fn app_icon() -> tauri::Result<Image<'static>> {
+    Image::from_bytes(include_bytes!("../icons/icon.png"))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             foundry_bridge::start_foundry_bridge(app.handle().clone());
+            let icon = app_icon()?;
+
+            if let Some(window) = app.get_webview_window("main") {
+                window.set_icon(icon.clone())?;
+            }
 
             let open = MenuItem::with_id(app, "open", "Open Console / Открыть пульт", true, None::<&str>)?;
             let separator = PredefinedMenuItem::separator(app)?;
@@ -127,7 +143,7 @@ pub fn run() {
 
             TrayIconBuilder::with_id("main-tray")
                 .tooltip("DnD Table")
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(icon)
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id().as_ref() {

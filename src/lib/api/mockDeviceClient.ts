@@ -69,7 +69,7 @@ export class MockDeviceClient implements DeviceClient {
     await delay();
     return {
       device_name: "table",
-      hostname: "table.local",
+      hostname: "192.168.0.192",
       ssid: "MockNet",
       wifi_status: "connected",
       ip: "192.168.0.192",

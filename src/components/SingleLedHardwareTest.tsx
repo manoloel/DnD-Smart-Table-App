@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useI18n } from "../hooks/useI18n";
 import { useAppStore } from "../store/useAppStore";
 import { EffectId, LedCommand } from "../types";
-import { CapabilityBadge } from "./CapabilityBadge";
 import { Panel } from "./Panel";
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -40,16 +39,16 @@ export function SingleLedHardwareTest() {
     });
 
   return (
-    <Panel title={t("singleLedHardwareTest")} eyebrow="table.local /api/segments/state" badge={<CapabilityBadge mode="real" label="ESP32 live" />}>
+    <Panel title={t("singleLedHardwareTest")} eyebrow={t("directLightCheck")}>
       <div className="grid grid-cols-[1fr_0.8fr] gap-6 max-xl:grid-cols-1">
         <div className="grid gap-4">
-          <div className="grid grid-cols-4 gap-3 max-lg:grid-cols-2">
+          <div className="grid grid-cols-4 gap-3 max-lg:grid-cols-2 max-sm:grid-cols-1">
             <label className="grid gap-2 text-sm font-bold text-slate-300">
               {t("effect")}
               <select value={testEffect} onChange={(event) => setTestEffect(event.target.value as EffectId)} className="rounded-lg border border-white/10 bg-panel-950 px-4 py-3 text-white">
                 {availableLedEffects.map((effect) => (
                   <option key={effect} value={effect}>
-                    {effect}
+                    {t(`effect.${effect}`)}
                   </option>
                 ))}
               </select>
@@ -76,7 +75,7 @@ export function SingleLedHardwareTest() {
             </label>
           </div>
 
-          <div className="grid grid-cols-5 gap-3 max-xl:grid-cols-3 max-md:grid-cols-2">
+          <div className="grid grid-cols-5 gap-3 max-xl:grid-cols-3 max-md:grid-cols-2 max-sm:grid-cols-1">
             <button className="rounded-lg bg-signal-cyan px-4 py-3 font-black text-panel-950" onClick={() => sendTest()}>
               {t("sendTest")}
             </button>

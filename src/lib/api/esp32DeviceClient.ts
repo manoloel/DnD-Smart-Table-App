@@ -21,6 +21,7 @@ import { DeviceClient } from "./deviceClient";
 import { segmentIds, tableSegmentId, zoneIdToSegmentId } from "./segments";
 
 const ledEffects: EffectId[] = ["static", "pulse", "breathing", "spark", "initiative", "warning", "scan"];
+const requestTimeoutMs = 2000;
 
 function hexToRgb(hex: string): [number, number, number] {
   const value = hex.replace("#", "");
@@ -33,6 +34,17 @@ function hexToRgb(hex: string): [number, number, number] {
 
 function isTauriRuntime() {
   return "__TAURI_INTERNALS__" in window;
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs);
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 }
 
 export class Esp32DeviceClient implements DeviceClient {
@@ -217,7 +229,7 @@ export class Esp32DeviceClient implements DeviceClient {
       return JSON.parse(body) as T;
     }
 
-    const response = await fetch(`${this.baseUrl}${path}`);
+    const response = await fetchWithTimeout(`${this.baseUrl}${path}`);
     if (!response.ok) {
       throw new Error(`GET ${path} failed: ${response.status}`);
     }
@@ -244,7 +256,7 @@ export class Esp32DeviceClient implements DeviceClient {
       return;
     }
 
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    const response = await fetchWithTimeout(`${this.baseUrl}${path}`, {
       method,
       headers: { "Content-Type": "application/json" },
       body,

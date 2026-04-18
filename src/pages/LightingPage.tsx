@@ -3,24 +3,23 @@ import { scenePresets } from "../config/presets";
 import { useAppStore } from "../store/useAppStore";
 import { EffectId, LightingZone, ZoneId } from "../types";
 import { Panel } from "../components/Panel";
-import { CapabilityBadge } from "../components/CapabilityBadge";
 import { useI18n } from "../hooks/useI18n";
 
 const effects: EffectId[] = ["static", "pulse", "breathing", "spark", "initiative", "warning", "scan"];
 type ZoneDraft = Pick<LightingZone, "color" | "brightness" | "effect">;
 
 function makeZoneDrafts(zones: LightingZone[]) {
-  return zones.reduce(
-    (drafts, zone) => ({
-      ...drafts,
-      [zone.id]: {
-        color: zone.color,
-        brightness: zone.brightness,
-        effect: zone.effect,
-      },
-    }),
-    {} as Record<ZoneId, ZoneDraft>,
-  );
+  const drafts = {} as Record<ZoneId, ZoneDraft>;
+
+  for (const zone of zones) {
+    drafts[zone.id] = {
+      color: zone.color,
+      brightness: zone.brightness,
+      effect: zone.effect,
+    };
+  }
+
+  return drafts;
 }
 
 export function LightingPage() {
@@ -51,8 +50,8 @@ export function LightingPage() {
 
   return (
     <div className="grid gap-6">
-      <Panel title={t("lightingPresets")} eyebrow={t("demoEffects")} badge={<CapabilityBadge mode="real" label="PUT /api/segments/state" />}>
-        <div className="grid grid-cols-6 gap-3 max-2xl:grid-cols-3 max-lg:grid-cols-2">
+      <Panel title={t("lightingPresets")} eyebrow={t("presetEffects")}>
+        <div className="grid grid-cols-6 gap-3 max-2xl:grid-cols-3 max-lg:grid-cols-2 max-sm:grid-cols-1">
           {scenePresets.map((preset) => (
             <button
               key={preset.id}
@@ -60,8 +59,8 @@ export function LightingPage() {
               onClick={() => applyPreset(preset.id)}
             >
               <span className="block h-10 rounded-lg" style={{ backgroundColor: preset.color }} />
-              <span className="mt-3 block font-black text-white">{preset.name}</span>
-              <span className="text-xs text-slate-400">{preset.description}</span>
+              <span className="mt-3 block font-black text-white">{t(`preset.${preset.id}.name`)}</span>
+              <span className="text-xs text-slate-400">{t(`preset.${preset.id}.description`)}</span>
             </button>
           ))}
         </div>
@@ -78,10 +77,9 @@ export function LightingPage() {
                 key={zone.id}
                 title={zone.label}
                 eyebrow={zone.id === "ambient" ? t("ambient") : t("playerZone")}
-                badge={<CapabilityBadge mode={zone.id === "ambient" ? "real" : "mock"} label={zone.id === "ambient" ? "table.local" : "Mock zone"} />}
               >
                 <div className="grid gap-4">
-                  <div className="flex items-center gap-4">
+                  <div className="flex min-w-0 items-center gap-4">
                     <input
                       aria-label={`${zone.label} color`}
                       className="h-14 w-20 rounded-lg border border-white/10 bg-transparent p-1"
@@ -89,9 +87,9 @@ export function LightingPage() {
                       value={draft.color}
                       onChange={(event) => updateZoneDraft(zone.id, { color: event.target.value })}
                     />
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-black text-white">{draft.color.toUpperCase()}</p>
-                      <p className="text-sm text-slate-400">{zone.online ? "Online" : "Offline"}</p>
+                      <p className="text-sm text-slate-400">{zone.online ? t("online") : t("offline")}</p>
                     </div>
                   </div>
 
@@ -114,7 +112,7 @@ export function LightingPage() {
                   >
                     {effects.map((effect) => (
                       <option key={effect} value={effect}>
-                        {effect}
+                        {t(`effect.${effect}`)}
                       </option>
                     ))}
                   </select>

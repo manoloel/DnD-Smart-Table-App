@@ -14,9 +14,9 @@ const tones = {
 
 export function StatusMetric({ label, value, tone = "slate" }: StatusMetricProps) {
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+    <div className="min-w-0 rounded-lg border border-white/10 bg-white/[0.035] p-4">
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-      <p className={`mt-2 text-2xl font-black ${tones[tone]}`}>{value}</p>
+      <p className={`mt-2 break-words text-2xl font-black max-sm:text-xl ${tones[tone]}`}>{value}</p>
     </div>
   );
 }

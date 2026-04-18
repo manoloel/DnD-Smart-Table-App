@@ -138,10 +138,18 @@ function getDeviceClient(): DeviceClient {
 }
 
 function getActiveClient() {
-  return canUseRealTable() ? getDeviceClient() : fallbackMockClient;
+  if (canUseRealTable()) {
+    return getDeviceClient();
+  }
+
+  if (canUseDemoMode()) {
+    return fallbackMockClient;
+  }
+
+  throw createDemoDisabledError();
 }
 
-function createPlayerOledPayload(player: PlayerProfile, message = "Твой ход!"): OledPayload {
+function createPlayerOledPayload(player: PlayerProfile, message = "Your turn!"): OledPayload {
   return {
     segment: seatToSegmentId(player.seat),
     name: player.characterName || player.name || "Player",
@@ -154,16 +162,24 @@ function createPlayerOledPayload(player: PlayerProfile, message = "Твой хо
 function createOpenSeatOledPayload(seat: number): OledPayload {
   return {
     segment: seatToSegmentId(seat),
-    name: `Место ${seat}`,
+    name: `Seat ${seat}`,
     hp: 0,
     ac: 0,
-    message: "Свободное место",
+    message: "Open seat",
   };
 }
 
 function canUseRealTable() {
   const connection = useAppStore.getState().device.connection;
-  return connection === "connected" || connection === "degraded";
+  return connection === "connected";
+}
+
+function canUseDemoMode() {
+  return useAppStore.getState().demoMode;
+}
+
+function createDemoDisabledError() {
+  return new Error("Table is offline. Enable demo mode to use simulated commands.");
 }
 
 const fallbackMockClient = new MockDeviceClient(initialZones);
@@ -205,7 +221,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       id: "log-boot",
       level: "info",
       source: "system",
-      message: "Mock operator console booted",
+      message: "Operator console booted",
       timestamp: now(),
     },
   ],
@@ -215,9 +231,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({ device: { ...state.device, connection: "connecting" } }));
     try {
       const client = getDeviceClient();
-      await client.connect();
-      const [status, led] = await Promise.all([client.getStatus(), client.getLed()]);
-      const effects = await client.getLedEffects();
+      const status = await client.getStatus();
+      const [led, effects] = await Promise.all([client.getLed(), client.getLedEffects()]);
       set((state) => ({
         device: {
           ...state.device,
@@ -251,7 +266,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   disconnectTable: async () => {
     if (canUseRealTable()) {
       await getDeviceClient().disconnect();
-    } else {
+    } else if (canUseDemoMode()) {
       await fallbackMockClient.disconnect();
     }
     set((state) => ({ device: { ...state.device, connection: "offline" } }));
@@ -263,12 +278,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     const limit = get().settings.brightnessLimit;
     const nextZone = { ...zone, ...patch, brightness: clampBrightness(patch.brightness ?? zone.brightness, limit) };
     try {
-      if (zoneId === "ambient" && canUseRealTable()) {
+      if (canUseRealTable()) {
         await getDeviceClient().setZone(nextZone);
-      } else if (canUseRealTable()) {
-        await getDeviceClient().setZone(nextZone);
-      } else {
+      } else if (canUseDemoMode()) {
         await fallbackMockClient.setZone(nextZone);
+      } else {
+        throw createDemoDisabledError();
       }
     } catch (error) {
       set((state) => ({ device: { ...state.device, connection: "degraded" } }));
@@ -281,12 +296,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     get().pushLog({
       level: "info",
       source: "rest",
-      message: zoneId === "ambient" ? `Updated ${nextZone.label} on table.local` : `Updated ${nextZone.label} in mock zone model`,
+      message: `Updated ${nextZone.label}`,
     });
   },
   refreshLedState: async () => {
     try {
-      const led = canUseRealTable() ? await getDeviceClient().getLed() : await fallbackMockClient.getLed();
+      let led: TableLedResponse;
+      if (canUseRealTable()) {
+        led = await getDeviceClient().getLed();
+      } else if (canUseDemoMode()) {
+        led = await fallbackMockClient.getLed();
+      } else {
+        throw createDemoDisabledError();
+      }
       set((state) => ({
         ledState: led,
         zones: state.zones.map((zone) =>
@@ -314,8 +336,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       if (canUseRealTable()) {
         await getDeviceClient().sendLedCommand(limitedCommand);
-      } else {
+      } else if (canUseDemoMode()) {
         await fallbackMockClient.sendLedCommand(limitedCommand);
+      } else {
+        throw createDemoDisabledError();
       }
       const led = canUseRealTable() ? await getDeviceClient().getLed() : await fallbackMockClient.getLed();
       set((state) => ({
@@ -341,6 +365,20 @@ export const useAppStore = create<AppState>((set, get) => ({
     const presetConfig = scenePresets.find((item) => item.id === preset);
     if (!presetConfig) return;
     const limitedBrightness = clampBrightness(presetConfig.brightness, get().settings.brightnessLimit);
+
+    try {
+      if (canUseRealTable()) {
+        await getDeviceClient().applyPreset(preset);
+      } else if (canUseDemoMode()) {
+        await fallbackMockClient.applyPreset(preset);
+      } else {
+        throw createDemoDisabledError();
+      }
+    } catch (error) {
+      set((state) => ({ device: { ...state.device, connection: "degraded" } }));
+      get().pushLog({ level: "error", source: "rest", message: `Preset command failed: ${String(error)}` });
+      return;
+    }
     set((state) => ({
       activeScene: preset,
       zones: state.zones.map((zone) => ({
@@ -350,18 +388,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         effect: presetConfig.effect,
       })),
     }));
-
-    try {
-      if (canUseRealTable()) {
-        await getDeviceClient().applyPreset(preset);
-      } else {
-        await fallbackMockClient.applyPreset(preset);
-      }
-    } catch (error) {
-      set((state) => ({ device: { ...state.device, connection: "degraded" } }));
-      get().pushLog({ level: "error", source: "rest", message: `Preset command failed: ${String(error)}` });
-      return;
-    }
     get().pushLog({ level: "info", source: "rest", message: `Applied preset ${presetConfig.name}` });
   },
   highlightPlayer: async (playerId) => {
@@ -398,8 +424,10 @@ export const useAppStore = create<AppState>((set, get) => ({
           dim_brightness: 18,
           preserve_table: true,
         });
-      } else {
+      } else if (canUseDemoMode()) {
         await fallbackMockClient.highlightSeat(player.seat);
+      } else {
+        throw createDemoDisabledError();
       }
       await getActiveClient().sendOled(createPlayerOledPayload(player));
     } catch (error) {
@@ -436,8 +464,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       if (canUseRealTable()) {
         await getDeviceClient().allLightsOff();
-      } else {
+      } else if (canUseDemoMode()) {
         await fallbackMockClient.allLightsOff();
+      } else {
+        throw createDemoDisabledError();
       }
     } catch (error) {
       set((state) => ({ device: { ...state.device, connection: "degraded" } }));
@@ -514,23 +544,39 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
     saveSeatedPlayersToDatabase(nextPlayers);
     get().pushLog({ level: "info", source: "system", message: `Cleared seat ${seat}` });
-    void getActiveClient().sendOled(createOpenSeatOledPayload(seat));
+    if (canUseRealTable() || canUseDemoMode()) {
+      void getActiveClient().sendOled(createOpenSeatOledPayload(seat));
+    }
   },
   testHighlight: async (playerId) => {
     const player = get().players.find((item) => item.id === playerId);
     if (!player) return;
-    if (canUseRealTable()) {
-      await getDeviceClient().highlightSeat(player.seat);
-    } else {
-      await fallbackMockClient.highlightSeat(player.seat);
+    try {
+      if (canUseRealTable()) {
+        await getDeviceClient().highlightSeat(player.seat);
+      } else if (canUseDemoMode()) {
+        await fallbackMockClient.highlightSeat(player.seat);
+      } else {
+        throw createDemoDisabledError();
+      }
+    } catch (error) {
+      get().pushLog({ level: "error", source: "rest", message: `Highlight test failed: ${String(error)}` });
+      return;
     }
     get().pushLog({ level: "info", source: "rest", message: `Test highlight for ${player.name}` });
   },
   sendOled: async (payload) => {
-    if (canUseRealTable()) {
-      await getDeviceClient().sendOled(payload);
-    } else {
-      await fallbackMockClient.sendOled(payload);
+    try {
+      if (canUseRealTable()) {
+        await getDeviceClient().sendOled(payload);
+      } else if (canUseDemoMode()) {
+        await fallbackMockClient.sendOled(payload);
+      } else {
+        throw createDemoDisabledError();
+      }
+    } catch (error) {
+      get().pushLog({ level: "error", source: "oled", message: `OLED command failed: ${String(error)}` });
+      return;
     }
     get().pushLog({ level: "info", source: "oled", message: `OLED segment ${payload.segment}: ${payload.name}` });
   },
@@ -571,6 +617,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     get().pushLog({ level: "info", source: "rfid", message: `Reader ${readerId} matched ${player.name}` });
   },
   addRfidScan: (readerId = Math.ceil(Math.random() * 6), tagId) => {
+    if (!canUseDemoMode()) {
+      get().pushLog({ level: "warn", source: "rfid", message: "RFID simulation requires demo mode" });
+      return;
+    }
+
     const database = get().playerDatabase.filter((player) => player.rfidTag);
     const randomPlayer = database[Math.floor(Math.random() * database.length)];
     const nextTagId = tagId ?? randomPlayer?.rfidTag ?? `TAG-${Math.random().toString(16).slice(2, 8).toUpperCase()}`;
@@ -580,9 +631,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     const player = get().players.find((item) => item.id === playerId);
     if (!player) return;
 
-    const client = canUseRealTable() ? getDeviceClient() : fallbackMockClient;
-    const tagId = await client.requestRfidTag();
-    await client.bindRfid(playerId, tagId);
+    let tagId: string;
+    try {
+      const client = canUseRealTable() ? getDeviceClient() : canUseDemoMode() ? fallbackMockClient : undefined;
+      if (!client) {
+        throw createDemoDisabledError();
+      }
+      tagId = await client.requestRfidTag();
+      await client.bindRfid(playerId, tagId);
+    } catch (error) {
+      get().pushLog({ level: "error", source: "rfid", message: `RFID bind failed: ${String(error)}` });
+      return;
+    }
 
     const nextPlayer = { ...player, rfidTag: tagId };
     const nextPlayers = get().players.map((item) => (item.id === playerId ? nextPlayer : item));
@@ -607,6 +667,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const latest = get().rfidEvents[0];
     const player = get().players.find((item) => item.id === playerId);
     if (!latest || !player) return;
+    if (!canUseDemoMode()) {
+      get().pushLog({ level: "warn", source: "rfid", message: "Assigning simulated scans requires demo mode" });
+      return;
+    }
     await fallbackMockClient.bindRfid(playerId, latest.tagId);
     const nextPlayer = { ...player, rfidTag: latest.tagId };
     const nextPlayers = get().players.map((item) => (item.id === playerId ? nextPlayer : item));
@@ -800,7 +864,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   mockTableTurnButton: async (seat) => {
-    get().pushLog({ level: "info", source: "websocket", message: `Mock table turn button at seat ${seat}` });
+    if (!canUseDemoMode()) {
+      get().pushLog({ level: "warn", source: "websocket", message: "Simulated table buttons require demo mode" });
+      return;
+    }
+
+    get().pushLog({ level: "info", source: "websocket", message: `Simulated table turn button at seat ${seat}` });
     await get().handleTableTurnButton(seat);
   },
   pushLog: (log) =>

@@ -27,7 +27,7 @@ export function TableOverview() {
         type="button"
         disabled={!player}
         onClick={() => player && highlightPlayer(player.id)}
-        className={`min-h-28 rounded-lg border p-4 text-left transition ${
+        className={`min-h-28 rounded-lg border p-4 text-left transition max-sm:min-h-24 max-sm:p-3 ${
           selected
             ? "border-signal-cyan bg-signal-cyan/10 shadow-glow"
             : "border-white/10 bg-white/[0.04] hover:border-signal-cyan/50 hover:bg-signal-cyan/10"
@@ -41,14 +41,14 @@ export function TableOverview() {
           <span className="h-3 w-3 rounded-full" style={{ backgroundColor: zone.color }} />
         </div>
         <p className="mt-5 truncate text-lg font-black text-white">{player?.characterName || player?.name || t("openSeat")}</p>
-        <p className="text-xs text-slate-400">{zone.brightness}% - {zone.effect}</p>
+        <p className="text-xs text-slate-400">{zone.brightness}% - {t(`effect.${zone.effect}`)}</p>
       </button>
     );
   }
 
   return (
-    <div className="rounded-[28px] border border-white/10 bg-panel-950 p-5">
-      <div className="grid grid-cols-3 gap-3">
+    <div className="min-w-0 rounded-lg border border-white/10 bg-panel-950 p-5 max-sm:p-3">
+      <div className="grid grid-cols-3 gap-3 max-sm:grid-cols-1">
         {topSeats.map(renderSeat)}
       </div>
       <div className="my-4 rounded-lg border border-white/10 bg-white/[0.04] p-4">
@@ -68,7 +68,7 @@ export function TableOverview() {
           <span className="h-8 w-8 rounded-full border border-white/20" style={{ backgroundColor: ambient?.color }} />
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3 max-sm:grid-cols-1">
         {bottomSeats.map(renderSeat)}
       </div>
     </div>
