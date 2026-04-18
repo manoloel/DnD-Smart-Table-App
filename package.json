@@ -2,6 +2,7 @@
   "name": "dnd-table",
   "private": true,
   "version": "0.1.0",
+  "author": "manoloel",
   "type": "module",
   "scripts": {
     "dev": "vite",

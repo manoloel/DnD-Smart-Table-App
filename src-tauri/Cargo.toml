@@ -2,7 +2,7 @@
 name = "dnd-table"
 version = "0.1.0"
 description = "A virtual tabletop app for DnD"
-authors = ["you"]
+authors = ["manoloel"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
