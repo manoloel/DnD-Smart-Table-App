@@ -1,4 +1,4 @@
-# DnD Table
+# TTRPG Smart Table App
 
 Operator console for a smart DnD table. The app is built mock-first, so the UI can be demonstrated without the ESP32 hardware, while real device communication stays isolated in `src/lib/api` and `src/lib/ws`.
 
